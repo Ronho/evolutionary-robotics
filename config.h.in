@@ -1,0 +1,2 @@
+#define EvoRob_VERSION_MAJOR @EvoRob_VERSION_MAJOR@
+#define EvoRob_VERSION_MINOR @EvoRob_VERSION_MINOR@
