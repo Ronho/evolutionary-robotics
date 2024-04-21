@@ -4,6 +4,22 @@ set(CMAKE_CPP_STANDARD_REQUIRED True)
 
 
 project(EvoRob VERSION 0.1)
-configure_file(config.h.in config.h)
 add_executable(EvoRob main.cpp)
 target_include_directories(EvoRob PUBLIC "${PROJECT_BINARY_DIR}")
+configure_file(config.h.in config.h)
+
+
+# Require matplotplusplus for visualization.
+find_package(Matplot++ QUIET)
+if(NOT Matplot++_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(matplotplusplus
+        GIT_REPOSITORY https://github.com/alandefreitas/matplotplusplus
+        GIT_TAG v1.2.1)
+    FetchContent_GetProperties(matplotplusplus)
+    if(NOT matplotplusplus_POPULATED)
+        FetchContent_Populate(matplotplusplus)
+        add_subdirectory(${matplotplusplus_SOURCE_DIR} ${matplotplusplus_BINARY_DIR} EXCLUDE_FROM_ALL)
+    endif()
+endif()
+target_link_libraries(EvoRob PUBLIC matplot)
