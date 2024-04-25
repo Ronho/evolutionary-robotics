@@ -2,6 +2,7 @@
 #include <matplot/matplot.h>
 #include <set>
 #include <cmath>
+#include <stdexcept>
 #include "config.h"
 
 class Light {
@@ -38,10 +39,15 @@ public:        // Access specifier
     double heading;
     // Radius (just for visualization). The center of the circle represents the robot itself.
     double radius;
-    // Angles of the sensors relative to the angle of the heading;
+    // Angles of the light sensors relative to the angle of the heading;
     std::array<double, 2> sensors;
     // Speed of the left (idx 0) and right (idx 1) wheel.
     std::array<double, 2> speed;
+
+private:
+    auto drawArrowRelativeToCenter(std::vector<double> vec) {
+        return matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
+    }
 
 public:
     Robot(std::array<double, 2> position, double heading, double radius, std::array<double, 2> speed, std::array<double, 2> sensors) {
@@ -53,23 +59,26 @@ public:
     }
 
     std::vector<double> getHeadingVector() {
-        double x = std::cos(heading * M_PI/180) * radius/2;
-        double y = std::sin(heading * M_PI/180) * radius/2;
+        return angleToVector(this->heading, this->radius);
+    }
 
-        return std::vector<double>{x, y};
+    std::vector<double> getSensorVector(int idx) {
+        if (idx > 1 || idx < 0) {
+            throw std::invalid_argument("Index out of bounds");
+        }
+
+        return angleToVector(this->heading + this->sensors[idx]);
     }
 
     void draw() {
-        std::vector<double> vec = angleToVector(this->heading, this->radius);
+        std::vector<double> vec = this->getHeadingVector();
         matplot::ellipse(this->position[0]-(this->radius / 2), this->position[1]-(this->radius / 2), this->radius, this->radius);
         // Heading direction.
-        auto a = matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
+        auto a = this->drawArrowRelativeToCenter(this->getHeadingVector());
         a->color("red");
         // Sensors.
-        vec = angleToVector(this->heading + this->sensors[0]);
-        matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
-        vec = angleToVector(this->heading + this->sensors[1]);
-        matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
+        this->drawArrowRelativeToCenter(this->getSensorVector(0));
+        this->drawArrowRelativeToCenter(this->getSensorVector(1));
     }
 };
 
@@ -84,6 +93,11 @@ int main()
         Light buzz({0.75, 0.75}, 0.1);
         rob.draw();
         buzz.draw();
+
+        std::vector<double> vec = {buzz.position[0] - rob.position[0], buzz.position[1] - rob.position[1]};
+        std::cout << buzz.position[0] << " - " << buzz.position[1] << std::endl;
+        std::cout << rob.position[0] << " - " << rob.position[1] << std::endl;
+        std::cout << vec[0] << " - " << vec[1] << std::endl;
 
         // Sensor: needs an angle which is relative to the heading of the robot.
         // Get distance between the sensor and the light
