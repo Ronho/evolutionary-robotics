@@ -1,5 +1,6 @@
 #define _USE_MATH_DEFINES
 #define ERROR_BOUND 1e-5
+#define DEBUG False
 
 #include <iostream>
 #include <matplot/matplot.h>
@@ -76,18 +77,21 @@ public:
         // Speed in unit/timeStep.
         const double rotation_offset = (this->radius) * (speed[1] + speed[0])/(speed[1] - speed[0]);
         const double rotation_angle = (360 * speed[1] * timeSteps)/(2 * M_PI * rotation_offset);
-        std::vector<double> rotation_point = angleToVector(this->heading + 90, rotation_offset);
-        this->drawArrowRelativeToCenter(rotation_point);
+        #ifdef DEBUG
+            std::vector<double> rotation_point = angleToVector(this->heading + 90, rotation_offset);
+            this->drawArrowRelativeToCenter(rotation_point);
+        #endif
 
         const double heading_angle_offset = (180 - rotation_angle) / 2;
-        const double heading_length = rotation_offset / std::tan(heading_angle_offset);
-        const std::vector<double> new_position = angleToVector(this->heading + heading_angle_offset, heading_length);
+        const double heading_length = rotation_offset / std::tan(heading_angle_offset * M_PI/180);
+        const std::vector<double> new_position = angleToVector(this->heading + rotation_angle, heading_length);
         this->position[0] += new_position[0];
         this->position[1] += new_position[1];
         this->heading += rotation_angle;
 
-
-        std::cout << rotation_angle << " " << rotation_offset  << " " << heading_length << " " << heading_angle_offset << " " << speed[0] * timeSteps << std::endl;
+        #ifdef DEBUG
+            std::cout << rotation_angle << " " << rotation_offset  << " " << heading_length << " " << heading_angle_offset << " " << speed[0] * timeSteps << std::endl;
+        #endif
         // double dl = speed[0] * timeSteps;
         // double dr = speed[1] * timeSteps;
 
@@ -115,6 +119,22 @@ public:
         // // this->position
 
         // matplot::ellipse(this->position[0] + x - (this->radius / 2), this->position[1] + y -(this->radius / 2), this->radius, this->radius);
+
+
+
+
+        // double angular_velocity = (speed[1]-speed[0])/(this->radius*2);
+        // double translation = ((speed[1]+speed[0])/2) * timeSteps;
+        // std::cout << "-----" << std::endl;
+        // std::cout << "Angular velocity: " << angular_velocity << std::endl;
+        // std::cout << "Heading before: " << this->heading << std::endl;
+        // std::cout << "Current position: " << this->position[0] << "," << this->position[1] << std::endl;
+        // this->heading += angular_velocity * timeSteps;
+        // std::cout << std::cos(this->heading) << std::endl;
+        // this->position[0] += translation * std::cos(this->heading * M_PI/180);
+        // this->position[1] += translation * std::sin(this->heading * M_PI/180);
+        // std::cout << "Next position: " << this->position[0] << "," << this->position[1] << std::endl;
+        // std::cout << "Heading after: " << this->heading << std::endl;
         
     }
 
@@ -152,8 +172,8 @@ int main()
         Robot rob({0.1, 0.1}, 90, 0.5, {100.0, 100.0}, {-45, 45});
         Light buzz({0.75, 0.75}, 0.1);
         rob.draw();
-        for (int i = 0; i <= 100; i++) {
-            rob.drive({0.075, 0.01}, 0.1);
+        for (int i = 0; i <= 25; i++) {
+            rob.drive({0.075, 0.1}, 1);
             rob.draw();
         }
         buzz.draw();
