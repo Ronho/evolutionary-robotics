@@ -11,6 +11,7 @@
 #include "config.h"
 #include "utils.h"
 #include "controller.h"
+#include "map.h"
 #include "types.h"
 
 // TODO
@@ -154,51 +155,18 @@ public:
     }
 };
 
-class Torus {
-public:
-    fixedVector xlim;
-    fixedVector ylim;
-
-public:
-    Torus(fixedVector xlim, fixedVector ylim) {
-        this->xlim = xlim;
-        this->ylim = ylim;
-    }
-
-    fixedVector clip(fixedVector position) {
-        if (position[0] > this->xlim[1]) {
-            position[0] -= (this->xlim[1] - this->xlim[0]);
-        } else if (position[0] < xlim[0]) {
-            position[0] += (this->xlim[1] - this->xlim[0]);
-        }
-        if (position[1] > this->ylim[1]) {
-            position[1] -= (this->ylim[1] - this->ylim[0]);
-        } else if (position[1] < ylim[0]) {
-            position[1] += (this->ylim[1] - this->ylim[0]);
-        }
-        return position;
-    }
-};
-
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
 
-    Torus env({-100, 100}, {-100, 100});
-    double norm = calcLength(env.xlim[0], env.ylim[0], env.xlim[1], env.ylim[1]);
-
-    Controller* controller;
-    if (argc > 1) {
-        controller = buildController(argv[1]);
-    } else {
-        // Fallback controller.
-        controller = buildController("fear");
-    }
-
+    Map* map = buildMap("torus");
+    Controller* controller = buildController("fear");
+    std::cout << map->xlim[0] << std::endl;
+    double norm = calcLength(map->xlim[0], map->ylim[0], map->xlim[1], map->ylim[1]);
 
     try {
         Robot rob({-90, -90}, 90, 5.0, {-45, 45});
         Light buzz({40, 40}, 10);
-        Visualizer viz(env.xlim, env.ylim);
+        Visualizer viz(map->xlim, map->ylim);
 
         viz.drawLight(&buzz);
         viz.drawRobot(&rob);
@@ -211,7 +179,7 @@ int main(int argc, char* argv[]) {
 
             fixedVector sensedValues = {buzz.getIntensity(rob.getSensorPosition(0), norm), buzz.getIntensity(rob.getSensorPosition(1), norm)};
             rob.drive(controller->control(sensedValues), 1);
-            rob.position = env.clip(rob.position);
+            rob.position = map->clip(rob.position);
             viz.drawRobot(&rob);
 
             // if (i % 10 == 0) {
