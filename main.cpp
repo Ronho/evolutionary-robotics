@@ -7,9 +7,12 @@
 #include <set>
 #include <cmath>
 #include <stdexcept>
+
 #include "config.h"
+#include "src/controller.h"
 
 // TODO
+// Assumption: Light reaches every point in the field.
 class Light {
 public:
     std::array<double, 2> position;
@@ -21,8 +24,9 @@ public:
         this->radius = radius;
     }
 
-    // double getIntensity(std::vector<double> sensor) {
-    // }
+    double getIntensity(std::vector<double> sensor) {
+        return std::sqrt(std::pow(sensor[0] - this->position[0], 2) + std::pow(sensor[1] - this->position[1], 2));
+    }
 };
 
 
@@ -103,6 +107,7 @@ public:
 
         this->position[0] += newPosition[0];
         this->position[1] += newPosition[1];
+
         this->heading += rotationAngle;
     }
 
@@ -134,11 +139,11 @@ private:
     }
 
 public:
-    Visualizer() {
+    Visualizer(const std::array<double, 2U> xlim, const std::array<double, 2U> ylim) {
         this->f = matplot::figure(true);
         this->ax = this->f->current_axes();
-        this->ax->xlim({-100, 100});
-        this->ax->ylim({-100, 100});
+        this->ax->xlim(xlim);
+        this->ax->ylim(ylim);
     }
 
     void drawRobot(Robot *rob) {
@@ -164,31 +169,77 @@ public:
     }
 };
 
+class Controller {
+public:
+    virtual std::vector<double> control(std::vector<double> sensorValues) = 0;
+};
 
-int main()
-{
+class BraitenbergAgressor : public Controller {
+public:
+     std::vector<double> control(std::vector<double> sensorValues) {
+        return {1, 1};
+     }
+};
+
+class BraitenbergFear : public Controller {
+public:
+     std::vector<double> control(std::vector<double> sensorValues) {
+        return {1, 1};
+     }
+};
+
+Controller* buildController(std::string identifier) {
+    if (identifier == "agressor") {
+        return new BraitenbergAgressor();
+    } else if (identifier == "fear") {
+        return new BraitenbergFear();
+    } else {
+        throw std::invalid_argument("Controller " + identifier + " unknown.");
+    }
+}
+
+int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
-    try
-    {
-        Robot rob({0.5, 0.5}, 90.0, 5.0, {-45, 45});
-        Light buzz({40, 40}, 10);
-        Visualizer viz;
 
+    const std::array<double, 2U> xlim = {-100, 100};
+    const std::array<double, 2U> ylim = {-100, 100};
+
+    Controller* controller;
+    if (argc > 1) {
+        controller = buildController(argv[1]);
+    } else {
+        controller = buildController("agressor");
+    }
+
+
+    try {
+        Robot rob({93.5, 93.5}, 45.0, 5.0, {-45, 45});
+        Light buzz({40, 40}, 10);
+        Visualizer viz(xlim, ylim);
+
+        viz.drawLight(&buzz);
         viz.drawRobot(&rob);
         for (int i = 0; i < 100; i++) {
             #ifdef DEBUG
-                std::cout << "Iteration: " << i << std::endl;
+                std::cout << "Iteration: " << i << " - Intensities: " << buzz.getIntensity(rob.getSensorVector(0)) << "," << buzz.getIntensity(rob.getSensorVector(1)) << std::endl;
             #endif
 
-            rob.drive({-1, 1}, 1);
+            rob.drive({1, 1}, 1);
+            if (rob.position[0] > xlim[1]) {
+                rob.position[0] -= (xlim[1] - xlim[0]);
+            } else if (rob.position[0] < xlim[0]) {
+                rob.position[0] += (xlim[1] - xlim[0]);
+            }
+            if (rob.position[1] > ylim[1]) {
+                rob.position[1] -= (ylim[1] - ylim[0]);
+            } else if (rob.position[0] < ylim[0]) {
+                rob.position[1] += (ylim[1] - ylim[0]);
+            }
             viz.drawRobot(&rob);
         }
-        viz.drawLight(&buzz);
         viz.save("path.svg");
         viz.show();
-    }
-    catch (const std::runtime_error &e)
-    {
+    } catch (const std::runtime_error &e) {
         // If you encounter the "popen() failed!" error, you likely have not
         // installed gnuplot correctly.
         std::cerr << "Runtime error: " << e.what() << std::endl;
