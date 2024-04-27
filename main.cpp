@@ -112,6 +112,7 @@ public:
 class Visualizer {
 private:
     matplot::figure_handle f;
+public:
     matplot::axes_handle ax;
 
 private:
@@ -126,6 +127,10 @@ public:
         this->ax = this->f->current_axes();
         this->ax->xlim(xlim);
         this->ax->ylim(ylim);
+    }
+
+    void drawWall(Wall *wall) {
+        this->ax->rectangle(wall->x1, wall->y1, wall->getWidth(), wall->getHeight());
     }
 
     void drawRobot(Robot *rob) {
@@ -155,21 +160,18 @@ public:
     }
 };
 
-int main(int argc, char* argv[]) {
-    std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
-
+void scenario1() {
     Map* map = buildMap("torus");
-    Controller* controller = buildController("fear");
-    std::cout << map->xlim[0] << std::endl;
+    Controller* controller = buildController("aggressor");
+    Robot rob({-90, -90}, 90, 5.0, {-45, 45});
+    Light buzz({40, 40}, 10);
     double norm = calcLength(map->xlim[0], map->ylim[0], map->xlim[1], map->ylim[1]);
-
     try {
-        Robot rob({-90, -90}, 90, 5.0, {-45, 45});
-        Light buzz({40, 40}, 10);
         Visualizer viz(map->xlim, map->ylim);
 
         viz.drawLight(&buzz);
         viz.drawRobot(&rob);
+        map->draw(viz.ax);
         viz.update();
         for (int i = 0; i < 1000; i++) {
             #ifdef DEBUG
@@ -192,6 +194,14 @@ int main(int argc, char* argv[]) {
         // If you encounter the "popen() failed!" error, you likely have not
         // installed gnuplot correctly.
         std::cerr << "Runtime error: " << e.what() << std::endl;
-    }
+}
+}
+
+int main(int argc, char* argv[]) {
+    std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
+
+    scenario1();
+
+    
     return 0;
 }
