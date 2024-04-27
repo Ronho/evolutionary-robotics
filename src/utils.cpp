@@ -7,11 +7,15 @@
 #include "types.h"
 
 fixedVector angleToVector(double angle, double vectorLength = 1) {
-    double x = std::cos(angle/180 * M_PI) * vectorLength/2;
-    double y = std::sin(angle/180 * M_PI) * vectorLength/2;
+    double x = std::cos(angle/180 * M_PI) * vectorLength;
+    double y = std::sin(angle/180 * M_PI) * vectorLength;
     return fixedVector{x, y};
 }
 
 bool isNearlyEqual(double a, double b) {
     return std::abs(a-b) < ERROR_BOUND;
+}
+
+double calcLength(double x1, double y1, double x2, double y2) {
+    return std::sqrt(std::pow(x1 - x2, 2) + std::pow(y1 - y2, 2));
 }

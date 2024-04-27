@@ -1,3 +1,4 @@
+#define SCALING_FACTOR 5
 #include <stdexcept>
 
 #include "types.h"
@@ -10,19 +11,19 @@ public:
 class BraitenbergAgressor : public Controller {
 public:
      fixedVector control(fixedVector sensorValues) {
-        return {1, 1};
+        return {sensorValues[1] * SCALING_FACTOR, sensorValues[0] * SCALING_FACTOR};
      }
 };
 
 class BraitenbergFear : public Controller {
 public:
      fixedVector control(fixedVector sensorValues) {
-        return {1, 1};
+        return {sensorValues[0] * SCALING_FACTOR, sensorValues[1] * SCALING_FACTOR};
      }
 };
 
 Controller* buildController(std::string identifier) {
-    if (identifier == "agressor") {
+    if (identifier == "aggressor") {
         return new BraitenbergAgressor();
     } else if (identifier == "fear") {
         return new BraitenbergFear();

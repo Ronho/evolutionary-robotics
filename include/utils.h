@@ -13,3 +13,5 @@
 fixedVector angleToVector(double angle, double vectorLength);
 
 bool isNearlyEqual(double a, double b);
+
+double calcLength(double x1, double y1, double x2, double y2);

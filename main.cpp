@@ -26,8 +26,8 @@ public:
         this->radius = radius;
     }
 
-    double getIntensity(fixedVector sensor) {
-        return std::sqrt(std::pow(sensor[0] - this->position[0], 2) + std::pow(sensor[1] - this->position[1], 2));
+    double getIntensity(fixedVector sensor, double norm) {
+        return 1 - (calcLength(sensor[0], sensor[1], this->position[0], this->position[1]) / norm);
     }
 };
 
@@ -41,11 +41,6 @@ public:
     double radius;
     // Angles of the light sensors relative to the angle of the heading;
     fixedVector sensors;
-
-private:
-    auto drawArrowRelativeToCenter(fixedVector vec) {
-        return matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
-    }
 
 public:
     // Constructor
@@ -76,11 +71,11 @@ public:
             newPosition = angleToVector(this->heading + rotationAngle, speed[1] * timeSteps);
         } else if (isNearlyEqual(-speed[0], speed[1])) {
             // Rotate on spot.
-            rotationAngle = (360 * speed[1] * timeSteps)/(2 * M_PI * this->radius);
+            rotationAngle = (360 * speed[0] * timeSteps)/(2 * M_PI * this->radius);
             newPosition = {0, 0};
         } else {
-            double rotationOffset = (this->radius) * (speed[1] + speed[0])/(speed[1] - speed[0]);
-            rotationAngle = (360 * speed[1] * timeSteps)/(2 * M_PI * rotationOffset);
+            double rotationOffset = (this->radius) * (speed[0] + speed[1])/(speed[0] - speed[1]);
+            rotationAngle = (360 * speed[0] * timeSteps)/(2 * M_PI * rotationOffset);
             const double headingAngleOffset = (180 - rotationAngle) / 2;
             const double headingLength = rotationOffset / std::tan(headingAngleOffset * M_PI/180);
             newPosition = angleToVector(this->heading + rotationAngle, headingLength);
@@ -133,21 +128,25 @@ public:
     }
 
     void drawRobot(Robot *rob) {
-        this->ax->ellipse(rob->position[0]-(rob->radius / 2), rob->position[1]-(rob->radius / 2), rob->radius, rob->radius);
+        // this->ax->ellipse(rob->position[0]-rob->radius, rob->position[1]-rob->radius, rob->radius * 2, rob->radius * 2);
         matplot::vectors_handle v = this->drawArrowRelativeToCenter(rob->position, rob->getHeadingVector());
         v->color("red");
-        this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(0));
-        this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(1));
+        // this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(0));
+        // this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(1));
     }
 
     void drawLight(Light *light) {
-        auto a = this->ax->ellipse(light->position[0]-(light->radius / 2), light->position[1]-(light->radius / 2), light->radius, light->radius);
+        auto a = this->ax->ellipse(light->position[0]-light->radius, light->position[1]-light->radius, light->radius * 2, light->radius * 2);
         a->fill(true);
         a->color("green");
     }
 
     void show() {
         this->f->show();
+    }
+
+    void update() {
+        this->f->draw();
     }
 
     void save(std::string filename) {
@@ -174,7 +173,7 @@ public:
         }
         if (position[1] > this->ylim[1]) {
             position[1] -= (this->ylim[1] - this->ylim[0]);
-        } else if (position[0] < ylim[0]) {
+        } else if (position[1] < ylim[0]) {
             position[1] += (this->ylim[1] - this->ylim[0]);
         }
         return position;
@@ -185,31 +184,39 @@ int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
 
     Torus env({-100, 100}, {-100, 100});
+    double norm = calcLength(env.xlim[0], env.ylim[0], env.xlim[1], env.ylim[1]);
 
     Controller* controller;
     if (argc > 1) {
         controller = buildController(argv[1]);
     } else {
         // Fallback controller.
-        controller = buildController("agressor");
+        controller = buildController("fear");
     }
 
 
     try {
-        Robot rob({93.5, 93.5}, 45.0, 5.0, {-45, 45});
+        Robot rob({-90, -90}, 90, 5.0, {-45, 45});
         Light buzz({40, 40}, 10);
         Visualizer viz(env.xlim, env.ylim);
 
         viz.drawLight(&buzz);
         viz.drawRobot(&rob);
-        for (int i = 0; i < 100; i++) {
+        viz.update();
+        for (int i = 0; i < 1000; i++) {
             #ifdef DEBUG
-                std::cout << "Iteration: " << i << " - Intensities: " << buzz.getIntensity(rob.getSensorPosition(0)) << "," << buzz.getIntensity(rob.getSensorPosition(1)) << std::endl;
+                std::cout << "Iteration: " << i << " - Position: " << rob.position[0] << "," << rob.position[1] << std::endl;
+                std::cout << "Iteration: " << i << " - Intensities: " << buzz.getIntensity(rob.getSensorPosition(0), norm) << "," << buzz.getIntensity(rob.getSensorPosition(1), norm) << std::endl;
             #endif
 
-            rob.drive({1, 1}, 1);
+            fixedVector sensedValues = {buzz.getIntensity(rob.getSensorPosition(0), norm), buzz.getIntensity(rob.getSensorPosition(1), norm)};
+            rob.drive(controller->control(sensedValues), 1);
             rob.position = env.clip(rob.position);
             viz.drawRobot(&rob);
+
+            // if (i % 10 == 0) {
+            //     viz.update();
+            // }
         }
         viz.save("path.svg");
         viz.show();
