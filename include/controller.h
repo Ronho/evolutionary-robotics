@@ -1,19 +1,21 @@
 #include <vector>
 #include <stdexcept>
 
+#include "types.h"
+
 class Controller {
 public:
-    virtual std::vector<double> control(std::vector<double> sensorValues);
+    virtual fixedVector control(fixedVector sensorValues);
 };
 
 class BraitenbergAgressor : public Controller {
 public:
-     std::vector<double> control(std::vector<double> sensorValues);
+     fixedVector control(fixedVector sensorValues);
 };
 
 class BraitenbergFear : public Controller {
 public:
-     std::vector<double> control(std::vector<double> sensorValues);
+     fixedVector control(fixedVector sensorValues);
 };
 
 Controller* buildController(std::string identifier);

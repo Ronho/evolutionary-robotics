@@ -1,21 +1,22 @@
-#include <vector>
 #include <stdexcept>
+
+#include "types.h"
 
 class Controller {
 public:
-    virtual std::vector<double> control(std::vector<double> sensorValues) = 0;
+    virtual fixedVector control(fixedVector sensorValues) = 0;
 };
 
 class BraitenbergAgressor : public Controller {
 public:
-     std::vector<double> control(std::vector<double> sensorValues) {
+     fixedVector control(fixedVector sensorValues) {
         return {1, 1};
      }
 };
 
 class BraitenbergFear : public Controller {
 public:
-     std::vector<double> control(std::vector<double> sensorValues) {
+     fixedVector control(fixedVector sensorValues) {
         return {1, 1};
      }
 };

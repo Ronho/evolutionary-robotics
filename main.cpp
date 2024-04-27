@@ -11,21 +11,22 @@
 #include "config.h"
 #include "utils.h"
 #include "controller.h"
+#include "types.h"
 
 // TODO
 // Assumption: Light reaches every point in the field.
 class Light {
 public:
-    std::array<double, 2> position;
+    fixedVector position;
     double radius;
 
 public:
-    Light(std::array<double, 2> position, double radius) {
+    Light(fixedVector position, double radius) {
         this->position = position;
         this->radius = radius;
     }
 
-    double getIntensity(std::vector<double> sensor) {
+    double getIntensity(fixedVector sensor) {
         return std::sqrt(std::pow(sensor[0] - this->position[0], 2) + std::pow(sensor[1] - this->position[1], 2));
     }
 };
@@ -33,16 +34,16 @@ public:
 class Robot {
 public:
     // Where the robot is located (x, y).
-    std::array<double, 2> position;
+    fixedVector position;
     // Angle where the robot is heading relative to its center.
     double heading;
     // Radius (just for visualization). The center of the circle represents the robot itself.
     double radius;
     // Angles of the light sensors relative to the angle of the heading;
-    std::array<double, 2> sensors;
+    fixedVector sensors;
 
 private:
-    auto drawArrowRelativeToCenter(std::vector<double> vec) {
+    auto drawArrowRelativeToCenter(fixedVector vec) {
         return matplot::arrow(this->position[0], this->position[1], this->position[0] + vec[0], this->position[1] + vec[1]);
     }
 
@@ -54,7 +55,7 @@ public:
     // - heading: The way, the robot is heading based on its center/position (in degree).
     // - radius: Size of the robot.
     // - sensors: Angle where the sensors are located relative to the heading.
-    Robot(std::array<double, 2> position, double heading, double radius, std::array<double, 2> sensors) {
+    Robot(fixedVector position, double heading, double radius, fixedVector sensors) {
         this->position = position;
         this->heading = heading;
         this->radius = radius;
@@ -66,8 +67,8 @@ public:
     // Args:
     // - speed: Speed of the wheels in unit/timeStep.
     // - timeSteps: Number of time steps to take. With increasing timeSteps the accuracy of the update is reduced.
-    void drive(std::vector<double> speed, double timeSteps) {
-        std::vector<double> newPosition;
+    void drive(fixedVector speed, double timeSteps) {
+        fixedVector newPosition;
         double rotationAngle;
         if (isNearlyEqual(speed[0], speed[1])) {
             // Straight forward.
@@ -92,17 +93,22 @@ public:
     }
 
     // TODO
-    std::vector<double> getHeadingVector() {
+    fixedVector getHeadingVector() {
         return angleToVector(this->heading, this->radius);
     }
 
     // TODO
-    std::vector<double> getSensorVector(int idx) {
+    fixedVector getRelativeSensorVector(int idx) {
         if (idx > 1 || idx < 0) {
             throw std::invalid_argument("Index out of bounds");
         }
 
         return angleToVector(this->heading + this->sensors[idx], this->radius);
+    }
+
+    fixedVector getSensorPosition(int idx) {
+        fixedVector relativeVec = this->getRelativeSensorVector(idx);
+        return {this->position[0] + relativeVec[0], this->position[1] + relativeVec[1]};
     }
 };
 
@@ -113,13 +119,13 @@ private:
     matplot::axes_handle ax;
 
 private:
-    matplot::vectors_handle drawArrowRelativeToCenter(std::array<double, 2> center, std::vector<double> vec) {
+    matplot::vectors_handle drawArrowRelativeToCenter(fixedVector center, fixedVector vec) {
         matplot::vectors_handle v = this->ax->arrow(center[0], center[1], center[0] + vec[0], center[1] + vec[1]);
         return v;
     }
 
 public:
-    Visualizer(const std::array<double, 2U> xlim, const std::array<double, 2U> ylim) {
+    Visualizer(const fixedVector xlim, const fixedVector ylim) {
         this->f = matplot::figure(true);
         this->ax = this->f->current_axes();
         this->ax->xlim(xlim);
@@ -130,8 +136,8 @@ public:
         this->ax->ellipse(rob->position[0]-(rob->radius / 2), rob->position[1]-(rob->radius / 2), rob->radius, rob->radius);
         matplot::vectors_handle v = this->drawArrowRelativeToCenter(rob->position, rob->getHeadingVector());
         v->color("red");
-        this->drawArrowRelativeToCenter(rob->position, rob->getSensorVector(0));
-        this->drawArrowRelativeToCenter(rob->position, rob->getSensorVector(1));
+        this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(0));
+        this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(1));
     }
 
     void drawLight(Light *light) {
@@ -149,11 +155,36 @@ public:
     }
 };
 
+class Torus {
+public:
+    fixedVector xlim;
+    fixedVector ylim;
+
+public:
+    Torus(fixedVector xlim, fixedVector ylim) {
+        this->xlim = xlim;
+        this->ylim = ylim;
+    }
+
+    fixedVector clip(fixedVector position) {
+        if (position[0] > this->xlim[1]) {
+            position[0] -= (this->xlim[1] - this->xlim[0]);
+        } else if (position[0] < xlim[0]) {
+            position[0] += (this->xlim[1] - this->xlim[0]);
+        }
+        if (position[1] > this->ylim[1]) {
+            position[1] -= (this->ylim[1] - this->ylim[0]);
+        } else if (position[0] < ylim[0]) {
+            position[1] += (this->ylim[1] - this->ylim[0]);
+        }
+        return position;
+    }
+};
+
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
 
-    const std::array<double, 2U> xlim = {-100, 100};
-    const std::array<double, 2U> ylim = {-100, 100};
+    Torus env({-100, 100}, {-100, 100});
 
     Controller* controller;
     if (argc > 1) {
@@ -167,26 +198,17 @@ int main(int argc, char* argv[]) {
     try {
         Robot rob({93.5, 93.5}, 45.0, 5.0, {-45, 45});
         Light buzz({40, 40}, 10);
-        Visualizer viz(xlim, ylim);
+        Visualizer viz(env.xlim, env.ylim);
 
         viz.drawLight(&buzz);
         viz.drawRobot(&rob);
         for (int i = 0; i < 100; i++) {
             #ifdef DEBUG
-                std::cout << "Iteration: " << i << " - Intensities: " << buzz.getIntensity(rob.getSensorVector(0)) << "," << buzz.getIntensity(rob.getSensorVector(1)) << std::endl;
+                std::cout << "Iteration: " << i << " - Intensities: " << buzz.getIntensity(rob.getSensorPosition(0)) << "," << buzz.getIntensity(rob.getSensorPosition(1)) << std::endl;
             #endif
 
             rob.drive({1, 1}, 1);
-            if (rob.position[0] > xlim[1]) {
-                rob.position[0] -= (xlim[1] - xlim[0]);
-            } else if (rob.position[0] < xlim[0]) {
-                rob.position[0] += (xlim[1] - xlim[0]);
-            }
-            if (rob.position[1] > ylim[1]) {
-                rob.position[1] -= (ylim[1] - ylim[0]);
-            } else if (rob.position[0] < ylim[0]) {
-                rob.position[1] += (ylim[1] - ylim[0]);
-            }
+            rob.position = env.clip(rob.position);
             viz.drawRobot(&rob);
         }
         viz.save("path.svg");
