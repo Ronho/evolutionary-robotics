@@ -1,5 +1,4 @@
 #define _USE_MATH_DEFINES
-#define ERROR_BOUND 1e-5
 #define DEBUG False
 
 #include <iostream>
@@ -7,9 +6,11 @@
 #include <set>
 #include <cmath>
 #include <stdexcept>
+#include <vector>
 
 #include "config.h"
-#include "src/controller.h"
+#include "utils.h"
+#include "controller.h"
 
 // TODO
 // Assumption: Light reaches every point in the field.
@@ -28,27 +29,6 @@ public:
         return std::sqrt(std::pow(sensor[0] - this->position[0], 2) + std::pow(sensor[1] - this->position[1], 2));
     }
 };
-
-
-// Convert an angle to a vector in two dimensional space.
-//
-// Args:
-// - angle: Angle in degrees.
-// - vectorLength: Length the vector should have.
-//
-// Returns:
-//   Vector relative to the [0, 0] vector with the given length.
-std::vector<double> angleToVector(double angle, double vectorLength = 1) {
-    double x = std::cos(angle/180 * M_PI) * vectorLength/2;
-    double y = std::sin(angle/180 * M_PI) * vectorLength/2;
-    return std::vector<double>{x, y};
-}
-
-
-// TODO
-bool isNearlyEqual(double a, double b) {
-    return std::abs(a-b) < ERROR_BOUND;
-}
 
 class Robot {
 public:
@@ -169,35 +149,6 @@ public:
     }
 };
 
-class Controller {
-public:
-    virtual std::vector<double> control(std::vector<double> sensorValues) = 0;
-};
-
-class BraitenbergAgressor : public Controller {
-public:
-     std::vector<double> control(std::vector<double> sensorValues) {
-        return {1, 1};
-     }
-};
-
-class BraitenbergFear : public Controller {
-public:
-     std::vector<double> control(std::vector<double> sensorValues) {
-        return {1, 1};
-     }
-};
-
-Controller* buildController(std::string identifier) {
-    if (identifier == "agressor") {
-        return new BraitenbergAgressor();
-    } else if (identifier == "fear") {
-        return new BraitenbergFear();
-    } else {
-        throw std::invalid_argument("Controller " + identifier + " unknown.");
-    }
-}
-
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
 
@@ -208,6 +159,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         controller = buildController(argv[1]);
     } else {
+        // Fallback controller.
         controller = buildController("agressor");
     }
 

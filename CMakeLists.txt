@@ -4,8 +4,9 @@ set(CMAKE_CPP_STANDARD_REQUIRED True)
 
 
 project(EvoRob VERSION 0.1)
-add_executable(EvoRob main.cpp)
-target_include_directories(EvoRob PUBLIC "${PROJECT_BINARY_DIR}")
+set(SOURCES main.cpp src/utils.cpp src/controller.cpp)
+add_executable(EvoRob ${SOURCES})
+target_include_directories(EvoRob PUBLIC "${PROJECT_BINARY_DIR}" ${CMAKE_CURRENT_SOURCE_DIR}/include)
 configure_file(config.h.in config.h)
 
 
