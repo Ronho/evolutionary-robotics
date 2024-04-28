@@ -40,6 +40,7 @@ public:
     }
 };
 
+// Assumption: 1 is lower left corner, 2 is upper right corner.
 class Wall {
 public:
     double x1;
@@ -77,8 +78,8 @@ public:
     fixedVector clip(fixedVector position) {
         position[0] = std::min(this->xlim[1], position[0]);
         position[0] = std::max(this->xlim[0], position[0]);
-        position[1] = std::min(this->ylim[1], position[0]);
-        position[1] = std::max(this->ylim[0], position[0]);
+        position[1] = std::min(this->ylim[1], position[1]);
+        position[1] = std::max(this->ylim[0], position[1]);
         return position;
     }
 
@@ -102,6 +103,6 @@ Map* buildMap(std::string identifier) {
         walls.push_back(Wall(50, 68, 100, 72));
         return new Bounded({-100, 100}, {-100, 100}, walls);
     } else {
-        throw std::invalid_argument("Controller " + identifier + " unknown.");
+        throw std::invalid_argument("Map " + identifier + " unknown.");
     }
 }
