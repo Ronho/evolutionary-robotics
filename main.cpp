@@ -478,10 +478,19 @@ void scenario2() {
 
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
+    std::string selectedScenario = "light";
 
-    // scenario1();
-    scenario2();
-
+    if (argc > 1) {
+        selectedScenario = argv[1];
+    }
     
+    if (selectedScenario == "light") {
+        scenario1();
+    } else if (selectedScenario == "proximity") {
+        scenario2();
+    } else {
+        std::cerr << "Invalid argument: " << selectedScenario << "." << std::endl;
+    }
+
     return 0;
 }
