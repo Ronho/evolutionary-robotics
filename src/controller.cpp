@@ -1,5 +1,6 @@
 #define SCALING_FACTOR 5
 #include <stdexcept>
+#include <string>
 
 #include "types.h"
 #include "controller.h"
