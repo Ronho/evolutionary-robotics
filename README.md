@@ -28,3 +28,12 @@ Debug\EvoRob.exe
 // MacOS
 ./EvoRob
 ```
+
+Release mode:
+```console
+// Windows
+mkdir release
+cd release
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+```

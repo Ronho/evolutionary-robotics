@@ -1,3 +1,4 @@
+#include <matplot/matplot.h>
 #include "types.h"
 
 // Assumption: Light reaches every point in the field.
@@ -9,4 +10,5 @@ public:
 public:
     Light(fixedVector position, double radius);
     double getIntensity(fixedVector sensor, double norm);
+    void draw(matplot::axes_handle ax);
 };

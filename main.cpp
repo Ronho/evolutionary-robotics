@@ -178,10 +178,6 @@ public:
         this->ax->ylim(ylim);
     }
 
-    void drawWall(Wall *wall) {
-        this->ax->rectangle(wall->x1, wall->y1, wall->getWidth(), wall->getHeight());
-    }
-
     void drawRobot(Robot *rob) {
         // this->ax->ellipse(rob->position[0]-rob->radius, rob->position[1]-rob->radius, rob->radius * 2, rob->radius * 2);
         matplot::vectors_handle v = this->drawArrowRelativeToCenter(rob->position, rob->getHeadingVector());
@@ -189,12 +185,6 @@ public:
         v = this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(0));
         v->color("blue");
         this->drawArrowRelativeToCenter(rob->position, rob->getRelativeSensorVector(1));
-    }
-
-    void drawLight(Light *light) {
-    auto a = this->ax->ellipse(light->position[0]-light->radius, light->position[1]-light->radius, light->radius * 2, light->radius * 2);
-    a->fill(true);
-    a->color("green");
     }
 
     void show() {
@@ -219,7 +209,7 @@ void scenario1() {
     Visualizer viz(map.xlim, map.ylim);
 
     try {
-        viz.drawLight(&buzz);
+        buzz.draw(viz.ax);
         viz.drawRobot(&rob);
         map.draw(viz.ax);
         viz.update();
