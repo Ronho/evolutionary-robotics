@@ -19,6 +19,7 @@ public:
     void draw(matplot::axes_handle ax);
 };
 
+// Assumption: 1 is lower left corner, 2 is upper right corner.
 class Wall {
 public:
     double x1;
@@ -40,5 +41,3 @@ public:
     fixedVector clip(fixedVector position);
     void draw(matplot::axes_handle ax);
 };
-
-Map* buildMap(std::string identifier);

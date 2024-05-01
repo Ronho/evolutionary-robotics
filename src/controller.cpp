@@ -2,25 +2,15 @@
 #include <stdexcept>
 
 #include "types.h"
+#include "controller.h"
 
-class Controller {
-public:
-    virtual fixedVector control(fixedVector sensorValues) = 0;
-};
+fixedVector BraitenbergAgressor::control(fixedVector sensorValues) {
+    return {sensorValues[1] * SCALING_FACTOR, sensorValues[0] * SCALING_FACTOR};
+}
 
-class BraitenbergAgressor : public Controller {
-public:
-     fixedVector control(fixedVector sensorValues) {
-        return {sensorValues[1] * SCALING_FACTOR, sensorValues[0] * SCALING_FACTOR};
-     }
-};
-
-class BraitenbergFear : public Controller {
-public:
-     fixedVector control(fixedVector sensorValues) {
-        return {sensorValues[0] * SCALING_FACTOR, sensorValues[1] * SCALING_FACTOR};
-     }
-};
+fixedVector BraitenbergFear::control(fixedVector sensorValues) {
+    return {sensorValues[0] * SCALING_FACTOR, sensorValues[1] * SCALING_FACTOR};
+}
 
 Controller* buildController(std::string identifier) {
     if (identifier == "aggressor") {

@@ -13,23 +13,7 @@
 #include "controller.h"
 #include "map.h"
 #include "types.h"
-
-// Assumption: Light reaches every point in the field.
-class Light {
-public:
-    fixedVector position;
-    double radius;
-
-public:
-    Light(fixedVector position, double radius) {
-        this->position = position;
-        this->radius = radius;
-    }
-
-    double getIntensity(fixedVector sensor, double norm) {
-        return 1 - (calcLength(sensor[0], sensor[1], this->position[0], this->position[1]) / norm);
-    }
-};
+#include "light.h"
 
 class Robot {
 public:
@@ -208,9 +192,9 @@ public:
     }
 
     void drawLight(Light *light) {
-        auto a = this->ax->ellipse(light->position[0]-light->radius, light->position[1]-light->radius, light->radius * 2, light->radius * 2);
-        a->fill(true);
-        a->color("green");
+    auto a = this->ax->ellipse(light->position[0]-light->radius, light->position[1]-light->radius, light->radius * 2, light->radius * 2);
+    a->fill(true);
+    a->color("green");
     }
 
     void show() {
@@ -227,26 +211,26 @@ public:
 };
 
 void scenario1() {
-    Map* map = buildMap("torus");
+    Torus map = Torus({-100, 100}, {-100, 100});
     Controller* controller = buildController("fear");
     Robot rob({-90, -90}, 90, 5.0, {45, -45});
     Light buzz({40, 40}, 10);
-    double norm = calcLength(map->xlim[0], map->ylim[0], map->xlim[1], map->ylim[1]);
-    Visualizer viz(map->xlim, map->ylim);
+    double norm = calcLength(map.xlim[0], map.ylim[0], map.xlim[1], map.ylim[1]);
+    Visualizer viz(map.xlim, map.ylim);
 
     try {
         viz.drawLight(&buzz);
         viz.drawRobot(&rob);
-        map->draw(viz.ax);
+        map.draw(viz.ax);
         viz.update();
-        for (int i = 0; i < 1000; i++) {
+        for (int i = 0; i < 10; i++) {
             #ifdef DEBUG
                 std::cout << "Iteration: " << i << " - Position: " << rob.position[0] << "," << rob.position[1] << std::endl;
             #endif
 
             fixedVector sensedValues = {buzz.getIntensity(rob.getSensorPosition(0), norm), buzz.getIntensity(rob.getSensorPosition(1), norm)};
             rob.drive(controller->control(sensedValues), 1);
-            rob.position = map->clip(rob.position);
+            rob.position = map.clip(rob.position);
             viz.drawRobot(&rob);
 
             // if (i % 10 == 0) {
@@ -325,7 +309,7 @@ double proximity(fixedVector sensorBeginning, fixedVector sensorEnd, Bounded* ma
     double upper = std::max(sensorBeginning[1], sensorEnd[1]);
     double left = std::min(sensorBeginning[0], sensorEnd[0]);
     double right = std::max(sensorBeginning[0], sensorEnd[0]);
-    double slopeWall, interceptWall, intersectionX, intersectionY;
+    double slopeWall, intersectionX, intersectionY;
     for (int i = 0; i < map->walls.size(); i++) {
         wall = &map->walls[i];
 

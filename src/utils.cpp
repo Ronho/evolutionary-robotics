@@ -5,6 +5,7 @@
 #include <cmath>
 
 #include "types.h"
+#include "utils.h"
 
 fixedVector angleToVector(double angle, double vectorLength = 1) {
     double x = std::cos(angle/180 * M_PI) * vectorLength;

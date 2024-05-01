@@ -5,7 +5,7 @@
 
 class Controller {
 public:
-    virtual fixedVector control(fixedVector sensorValues);
+    virtual fixedVector control(fixedVector sensorValues) = 0;
 };
 
 class BraitenbergAgressor : public Controller {
