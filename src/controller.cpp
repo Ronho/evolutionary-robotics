@@ -1,6 +1,5 @@
 #define SCALING_FACTOR 5
 #include <stdexcept>
-#include <string>
 
 #include "types.h"
 #include "controller.h"
@@ -24,9 +23,6 @@ LightController* buildLightController(std::string identifier) {
 }
 
 fixedVector HandMadeProxCon::control(std::vector<double> sensorValues) {
-    // Sensed values will be bigger with closer obstacles.
-    // Values above 1 or below 0 are measurement errors (e.g., there is no obstacle).
-
     if (sensorValues[1] > 1 || sensorValues[1] < 0.5) {
         // Nothing in front. Just go straight.
         return {5, 5};

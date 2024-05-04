@@ -24,3 +24,9 @@ if(NOT Matplot++_FOUND)
     endif()
 endif()
 target_link_libraries(EvoRob PUBLIC matplot)
+
+target_compile_definitions(EvoRob PRIVATE
+    $<$<CONFIG:Debug>:
+        DEBUG=1
+    >
+)

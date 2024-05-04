@@ -1,5 +1,4 @@
 #define _USE_MATH_DEFINES
-#define DEBUG False
 
 #include <cmath>
 #include <iostream>
@@ -16,13 +15,27 @@
 #include "types.h"
 #include "utils.h"
 
+/**
+ * @brief Calculate the proximity of the closest object observed by the sensor.
+ * 
+ * Sensed values will be bigger with closer obstacles. Values above 1 or below 0
+ * are measurement errors (no obstacle detected).
+ * 
+ * @param sensorBeginning Starting point of the sensor. Usually equal to the
+ * robots center.
+ * @param sensorEnd End point of the sensor.
+ * @param map A bounded map.
+ * 
+ * @return Proximity of the closest object in range.
+ */
 double proximity(fixedVector sensorBeginning, fixedVector sensorEnd, Bounded* map) {
     double shortestDistance = -1;
     double distance = -1;
     double scalingFactor = -1;
     double x = -1;
     double y = -1;
-    // Check bounds.
+
+    // Check bounds of the map. (Does the sensor point to an end of the map?)
     // Assuming that the beginning has to be inside the bounds.
     if (sensorEnd[0] < map->xlim[0]) {
         x = map->xlim[0];
@@ -69,21 +82,28 @@ double proximity(fixedVector sensorBeginning, fixedVector sensorEnd, Bounded* ma
         }
     }
 
-    // Check walls following https://stackoverflow.com/questions/99353/how-to-test-if-a-line-segment-intersects-an-axis-aligned-rectange-in-2d.
-
 
     Wall *wall;
-    double slopeProximity = (sensorEnd[1]-sensorBeginning[1]) / (sensorEnd[0]-sensorBeginning[0]); // Could be inf if parallel to y-axis.
+    double slopeProximity;
+    if (isNearlyEqual(sensorEnd[0]-sensorBeginning[0], 0)) {
+        slopeProximity = 1;
+    } else {
+        // Could be inf if parallel to y-axis (covered by case before).
+        slopeProximity = (sensorEnd[1]-sensorBeginning[1]) / (sensorEnd[0]-sensorBeginning[0]);
+    }
     double interceptProximity = sensorBeginning[1] - slopeProximity  * sensorBeginning[0];
     double lower = std::min(sensorBeginning[1], sensorEnd[1]);
     double upper = std::max(sensorBeginning[1], sensorEnd[1]);
     double left = std::min(sensorBeginning[0], sensorEnd[0]);
     double right = std::max(sensorBeginning[0], sensorEnd[0]);
     double slopeWall, intersectionX, intersectionY;
+
+    // For each wall check if the any of its edge of it has an intersection with
+    // the line segment created by the sensor. If so, the sensor can see this
+    // wall.
     for (int i = 0; i < map->walls.size(); i++) {
         wall = &map->walls[i];
 
-        // Check if any outer line of the wall intersects with the given line.
         // Top-Left -> Top-Right
         slopeWall = 0;
         if (!isNearlyEqual(slopeWall, slopeProximity)) {
@@ -164,6 +184,7 @@ double proximity(fixedVector sensorBeginning, fixedVector sensorEnd, Bounded* ma
             }
         } // Else: Lines are parallel. For simplicity, we do not check whether they are overlapping.
     }
+
     return shortestDistance;
 }
 
@@ -222,7 +243,7 @@ void proximityScenario() {
     HandMadeProxCon con;
     const double range = (map.ylim[1] - map.ylim[0]) * 0.15;
 
-    std::vector<double> sensedValues = {-1, -1, -1}; // -1 meaning no object detected.
+    std::vector<double> sensedValues = {-1, -1, -1}; // -1 = no object detected.
     fixedVector sensorEnd = {-1, -1};
     fixedVector speeds;
 
@@ -239,23 +260,31 @@ void proximityScenario() {
         for (int i = 0; i < 1000; i++) {
             for (int j = 0; j < rob.sensors.size(); j++) {
                 sensorEnd = angleToVector(rob.heading + rob.sensors[j], range);
-                sensorEnd = {rob.position[0] + sensorEnd[0], rob.position[1] + sensorEnd[1]};
-                sensedValues[j] = 1-(proximity(rob.position, sensorEnd, &map)/range);
+                sensorEnd = {
+                    rob.position[0] + sensorEnd[0],
+                    rob.position[1] + sensorEnd[1]
+                };
+                sensedValues[j] = 1 - (
+                    proximity(rob.position, sensorEnd, &map) / range
+                );
             }
             speeds = con.control(sensedValues);
 
             #ifdef DEBUG
-                std::cout << "Iteration: " << i << " - Position: " << rob.position[0] << "," << rob.position[1] << std::endl;
-                std::cout << "Sensed: " << sensedValues[0] << ", " << sensedValues[1] << ", " << sensedValues[2] << std::endl;
-                std::cout << "Speeds: " << speeds[0] << ", " << speeds[1] << std::endl;
+                std::cout << "Iteration: " << i << " - Position: "
+                    << rob.position[0] << "," << rob.position[1] << std::endl;
+                std::cout << "Sensed: " << sensedValues[0] << ", "
+                    << sensedValues[1] << ", " << sensedValues[2] << std::endl;
+                std::cout << "Speeds: " << speeds[0] << ", " << speeds[1]
+                    << std::endl;
             #endif
 
             rob.drive(speeds, 1);
             rob.position = map.clip(rob.position); // Collision detection with walls is ommitted.
-            rob.draw(ax);
+            rob.draw(ax, false);
         }
 
-        f->save("path_scenario_2.png");
+        f->save("proximity_scenario_trajectory.png");
         f->show();
     } catch (const std::runtime_error &e) {
         // If you encounter the "popen() failed!" error, you likely have not
@@ -265,8 +294,9 @@ void proximityScenario() {
 }
 
 int main(int argc, char* argv[]) {
-    std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "." << EvoRob_VERSION_MINOR << "." << std::endl;
-    std::string selectedScenario = "proximity";
+    std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "."
+        << EvoRob_VERSION_MINOR << "." << std::endl;
+    std::string selectedScenario = "light"; // If nothing is selected.
 
     if (argc > 1) {
         selectedScenario = argv[1];
@@ -277,7 +307,8 @@ int main(int argc, char* argv[]) {
     } else if (selectedScenario == "proximity") {
         proximityScenario();
     } else {
-        std::cerr << "Invalid argument: " << selectedScenario << "." << std::endl;
+        std::cerr << "Invalid argument: " << selectedScenario << "."
+            << std::endl;
     }
 
     return 0;
