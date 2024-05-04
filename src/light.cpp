@@ -4,13 +4,14 @@
 #include "utils.h"
 #include "light.h"
 
-Light::Light(fixedVector position, double radius) {
+Light::Light(fixedVector position, double radius, double norm) {
     this->position = position;
     this->radius = radius;
+    this->norm = norm;
 }
 
-double Light::getIntensity(fixedVector sensor, double norm) {
-    return 1 - (calcLength(sensor[0], sensor[1], this->position[0], this->position[1]) / norm);
+double Light::getIntensity(fixedVector sensorPos) {
+    return 1 - (calcLength(sensorPos[0], sensorPos[1], this->position[0], this->position[1]) / this->norm);
 }
 
 void Light::draw(matplot::axes_handle ax) {
