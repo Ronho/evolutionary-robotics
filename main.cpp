@@ -218,7 +218,7 @@ void lightScenario(std::string selectedController) {
 
             rob.drive(speeds, 1);
             rob.position = map.clip(rob.position);
-            rob.draw(ax); 
+            rob.draw(ax);
         }
         f->save("light_scenario_trajectory.png");
         f->show();
