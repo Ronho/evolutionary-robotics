@@ -188,9 +188,9 @@ double proximity(fixedVector sensorBeginning, fixedVector sensorEnd, Bounded* ma
     return shortestDistance;
 }
 
-void lightScenario() {
+void lightScenario(std::string selectedController) {
     Torus map = Torus({-100, 100}, {-100, 100});
-    LightController* controller = buildLightController("fear");
+    LightController* controller = buildLightController(selectedController);
     Robot rob({-90, -90}, 90, 5.0, {45, -45});
     Light buzz({40, 40}, 10, calcLength(map.xlim[0], map.ylim[0], map.xlim[1], map.ylim[1]));
 
@@ -207,10 +207,6 @@ void lightScenario() {
         map.draw(ax);
         f->draw();
         for (int i = 0; i < 1000; i++) {
-            #ifdef DEBUG
-                std::cout << "Iteration: " << i << " - Position: " << rob.position[0] << "," << rob.position[1] << std::endl;
-            #endif
-
             sensedValues = {buzz.getIntensity(rob.getSensorPosition(0)), buzz.getIntensity(rob.getSensorPosition(1))};
             speeds = controller->control(sensedValues);
 
@@ -280,8 +276,8 @@ void proximityScenario() {
             #endif
 
             rob.drive(speeds, 1);
-            rob.position = map.clip(rob.position); // Collision detection with walls is ommitted.
-            rob.draw(ax, false);
+            rob.position = map.clip(rob.position);
+            rob.draw(ax);
         }
 
         f->save("proximity_scenario_trajectory.png");
@@ -296,14 +292,20 @@ void proximityScenario() {
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "."
         << EvoRob_VERSION_MINOR << "." << std::endl;
-    std::string selectedScenario = "light"; // If nothing is selected.
+    
+    // Fallback values.
+    std::string selectedScenario = "light";
+    std::string selectedController = "aggressor";
 
     if (argc > 1) {
         selectedScenario = argv[1];
     }
+    if (argc > 2) {
+        selectedController = argv[2];
+    }
     
     if (selectedScenario == "light") {
-        lightScenario();
+        lightScenario(selectedController);
     } else if (selectedScenario == "proximity") {
         proximityScenario();
     } else {
