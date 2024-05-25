@@ -3,6 +3,7 @@
 #include <cmath>
 #include <iostream>
 #include <matplot/matplot.h>
+#include <random>
 #include <set>
 #include <stdexcept>
 #include <vector>
@@ -289,12 +290,138 @@ void proximityScenario() {
     }
 }
 
+
+void hill_climber_scenario() {
+
+    std::vector<Wall> walls;
+    walls.push_back(Wall(-100, -2, -50, 2));
+    walls.push_back(Wall(-2, -100, 2, 40));
+    walls.push_back(Wall(50, 68, 100, 72));
+    Bounded map({-100, 100}, {-100, 100}, walls);
+    Robot rob({-90, -90}, 0, 5.0, {22.5, 0, -22.5});
+    HandMadeProxCon con;
+    const double range = (map.ylim[1] - map.ylim[0]) * 0.15;
+
+    std::vector<double> sensedValues = {-1, -1, -1}; // -1 = no object detected.
+    fixedVector sensorEnd = {-1, -1};
+    fixedVector speeds;
+    double vl, vr = 0;
+
+    // Setup for random generation.
+    std::uniform_real_distribution<double> contDistribution(-5, 5);
+    std::uniform_int_distribution<uint16_t> discDistribution(0, 5);
+    std::random_device dev;
+    // Make every run different:
+    // std::mt19937 engine(dev()); // Mersenne twister MT19937
+    std::mt19937 engine; // Random but every time the same.
+    auto valueGenerator = std::bind(contDistribution, engine);
+    auto locGenerator = std::bind(discDistribution, engine);
+
+    // The genes consists of the slope and intercept for each sensor: y=mx+c.
+    // Each pair is next to each other, meaning:
+    // [0] = m0, [1] = c0, [2] = m1, [3] = c1, [4] = m2, [5] = c2
+    // m0 and c0 correspond to the sensor who generates the sensedValues at
+    // index 0: v0 = genes[0] * sensedValues[0] + genes[1]
+    std::vector<double> genes = {1, 1, 1, 1, 1, 1}; // TODO: has to be random!
+    std::generate(std::begin(genes), std::end(genes), valueGenerator);
+
+    std::vector<double> new_genes = genes;
+    std::set<std::pair<int, int>> visited;
+    size_t fitness = 0;
+    size_t new_fitness = 0;
+    uint16_t location = 0;
+
+    for (int epoch = 0; epoch < 10000; epoch++) {
+        for (int i = 0; i < 1000; i++) {
+            for (int j = 0; j < rob.sensors.size(); j++) {
+                sensorEnd = angleToVector(rob.heading + rob.sensors[j], range);
+                sensorEnd = {
+                    rob.position[0] + sensorEnd[0],
+                    rob.position[1] + sensorEnd[1]
+                };
+                sensedValues[j] = 1 - (
+                    proximity(rob.position, sensorEnd, &map) / range
+                );
+            }
+            vl = new_genes.at(0) * sensedValues.at(0) + new_genes.at(1);
+            vr = new_genes.at(2) * sensedValues.at(1) + new_genes.at(3)
+                 + new_genes.at(4) * sensedValues.at(2) + new_genes.at(5);
+            speeds = {vl, vr};
+
+            rob.drive(speeds, 1);
+            rob.position = map.clip(rob.position);
+
+            std::pair<int, int> x = std::make_pair(static_cast<int>(std::ceil(rob.position.at(0))), static_cast<int>(std::ceil(rob.position.at(1))));
+            visited.insert(x);
+        }
+        new_fitness = visited.size();
+        visited = {};
+        std::cout << "New fitness: " << new_fitness << std::endl;
+
+        if (new_fitness > fitness) {
+            fitness = new_fitness;
+            genes = new_genes;
+        }
+
+        std::cout << "Best fitness: " << fitness << std::endl;
+
+        // Mutate:
+        // First, choose one value to change.
+        // Second, choose a new value.
+        location = locGenerator();
+        new_genes.at(location) = valueGenerator();
+    }
+
+    try {
+        matplot::figure_handle f = matplot::figure(true);
+        matplot::axes_handle ax = f->current_axes();
+        ax->xlim(map.xlim);
+        ax->ylim(map.ylim);
+
+        rob.draw(ax);
+        map.draw(ax);
+        f->draw();
+
+        for (int i = 0; i < 1000; i++) {
+            for (int j = 0; j < rob.sensors.size(); j++) {
+                sensorEnd = angleToVector(rob.heading + rob.sensors[j], range);
+                sensorEnd = {
+                    rob.position[0] + sensorEnd[0],
+                    rob.position[1] + sensorEnd[1]
+                };
+                sensedValues[j] = 1 - (
+                    proximity(rob.position, sensorEnd, &map) / range
+                );
+            }
+            vl = genes.at(0) * sensedValues.at(0) + genes.at(1);
+            vr = genes.at(2) * sensedValues.at(1) + genes.at(3)
+                 + genes.at(4) * sensedValues.at(2) + genes.at(5);
+            speeds = {vl, vr};
+
+            rob.drive(speeds, 1);
+            rob.position = map.clip(rob.position);
+            rob.draw(ax);
+
+            std::pair<int, int> x = std::make_pair(static_cast<int>(std::ceil(rob.position.at(0))), static_cast<int>(std::ceil(rob.position.at(1))));
+            visited.insert(x);
+        }
+        fitness = visited.size();
+
+        f->save("hill_climber_trajectory.png");
+        f->show();
+    } catch (const std::runtime_error &e) {
+        // If you encounter the "popen() failed!" error, you likely have not
+        // installed gnuplot correctly.
+        std::cerr << "Runtime error: " << e.what() << std::endl;
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "."
         << EvoRob_VERSION_MINOR << "." << std::endl;
     
     // Fallback values.
-    std::string selectedScenario = "light";
+    std::string selectedScenario = "hill";
     std::string selectedController = "aggressor";
 
     if (argc > 1) {
@@ -308,6 +435,8 @@ int main(int argc, char* argv[]) {
         lightScenario(selectedController);
     } else if (selectedScenario == "proximity") {
         proximityScenario();
+    } else if (selectedScenario == "hill") {
+        hill_climber_scenario();
     } else {
         std::cerr << "Invalid argument: " << selectedScenario << "."
             << std::endl;
