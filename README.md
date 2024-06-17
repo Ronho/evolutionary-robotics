@@ -40,7 +40,7 @@ cmake --build . --config Release
 
 ## Usage
 
-Two different robots are implemented. The first uses light sensors - one on the left and one on the right. For this type of robot there are two different controllers based on Braitenberg.
+Several different robots are implemented. The first uses light sensors - one on the left and one on the right. For this type of robot there are two different controllers based on Braitenberg.
 
 Braitenberg's fear can be simulated using the following command.
 
@@ -48,13 +48,13 @@ Braitenberg's fear can be simulated using the following command.
 EvoRob.exe light fear
 ```
 
-![Braitenberg's Fear Trajectory](docs/light_scenario_trajectory_fear.png "Braitenberg's Fear Trajectory")
+![Braitenberg's Fear Trajectory](img/light_scenario_trajectory_fear.png "Braitenberg's Fear Trajectory")
 
 The red arrows represent the trajectory of the vehicle, while the green dot represents the light source but not its intensity.
 
 This robot will try to escape from the light by setting the speed of the left wheel in proportion to the value detected by the left sensor, assuming that larger values are detected when closer to the light source. The same applies to the right sensor and wheel. In our case, the light reaches the whole area and the readings decrease continuously with the distance of the sensor from the light as illustrated by the following picture.
 
-![Light Intensity](docs/light_intensity.png "Light Intensity")
+![Light Intensity](img/light_intensity.png "Light Intensity")
 
 Braitenberg's aggressor can be simulated using
 
@@ -62,7 +62,7 @@ Braitenberg's aggressor can be simulated using
 EvoRob.exe light aggressor
 ```
 
-![Braitenberg's Aggressor Trajectory](docs/light_scenario_trajectory_aggressor.png "Braitenberg's Aggressor Trajectory")
+![Braitenberg's Aggressor Trajectory](img/light_scenario_trajectory_aggressor.png "Braitenberg's Aggressor Trajectory")
 
 The second robot uses proximity sensors. One points directly to where the robot is going. The others are spaced 22.5 degrees apart from the first (to the left and right). The controller is hand crafted and works as follows:
 1. If there is nothing in front of the robot, walk straight ahead.
@@ -76,6 +76,16 @@ This robot can be tested using
 EvoRob.exe proximity
 ```
 
-![Hand Crafted Proximity Controller Trajectory](docs/proximity_scenario_trajectory.png "Hand Crafted Proximity Controller Trajectory")
+![Hand Crafted Proximity Controller Trajectory](img/proximity_scenario_trajectory.png "Hand Crafted Proximity Controller Trajectory")
 
 Note that instead of a light source, this scenario contains walls that the vehicle must avoid.
+
+Also building on the walls and proximity sensor, an evolutionary approach to create robots has been implemented. It can be tested using
+
+```console
+EvoRob.exe hill
+```
+
+An example trajectory looks like this:
+
+![Hill Climber Proximity Controller Trajectory](img/hill_climber_trajectory_991.png "Hill Climber Proximity Controller Trajectory")
