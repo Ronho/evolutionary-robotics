@@ -41,6 +41,10 @@ double Wall::getHeight() {
     return this->y2 - this->y1;
 }
 
+bool Wall::within(int x, int y) {
+    return (x >= this->x1) && (x <= this->x2) && (y >= this->y1) && (y <= this->y2);
+}
+
 Bounded::Bounded(fixedVector xlim, fixedVector ylim, std::vector<Wall> walls) {
     this->xlim = xlim;
     this->ylim = ylim;

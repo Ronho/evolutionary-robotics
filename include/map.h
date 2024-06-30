@@ -38,6 +38,8 @@ public:
      * @return Height.
      */
     double getHeight();
+
+    bool within(int x, int y);
 };
 
 class Map {

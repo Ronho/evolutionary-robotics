@@ -8,6 +8,7 @@
 #include <stdexcept>
 #include <vector>
 
+#include "ann.h"
 #include "config.h"
 #include "controller.h"
 #include "light.h"
@@ -416,12 +417,182 @@ void hill_climber_scenario() {
     }
 }
 
+void ann_evolutionary_scenario() {
+    std::vector<Wall> walls;
+    walls.push_back(Wall(-100, -2, -50, 2));
+    walls.push_back(Wall(-2, -100, 2, 40));
+    walls.push_back(Wall(50, 68, 100, 72));
+    Bounded map({-100, 100}, {-100, 100}, walls);
+    const double range = (map.ylim[1] - map.ylim[0]) * 0.15;
+
+
+    ANNGenerator generator(1, 2, 3, 2, true);
+    const unsigned int num_parents = 2;
+    const unsigned int num_steps = 1000;
+    const unsigned int generations = 50;
+    const unsigned int num_best = 35;
+	const unsigned int num_cross = 25;
+	const unsigned int num_mut = 37;
+	const unsigned int num_new = 3;
+	const int population_size = num_best + num_cross + num_mut + num_new;
+    std::vector<ANN> population;
+	std::vector<std::pair<double, int>> fitness;
+
+	generator.fill_random_population(population, population_size);
+
+	double best_fitness;
+	double average_fitness;
+
+    std::ofstream file;
+	file.open("generations.csv");
+	file << "generation,best_fitness,average_fitness\n";
+
+    for (unsigned int gen = 0; gen < generations; gen++) {
+        // Get Fitness
+        double summed_fitness = 0;
+		for (int p = 0; p < population.size(); p++) {
+            // Non-random initialization
+            // Robot rob({-90, -90}, 0, 5.0, {22.5, 0, -22.5});
+            // Randomly initialize. y: [-100, 100] and x: [-100, 0].
+            // x takes only half of the map in order to test the best robot in
+            // the other half (see below).
+            Robot rob(
+                {get_random_double(-100, 0), get_random_double(-100, 100)},
+                get_random_double(0, 180), 5.0, {22.5, 0, -22.5});
+            std::vector<double> sensedValues = {-1, -1, -1}; // -1 = no object detected.
+            fixedVector sensorEnd = {-1, -1};
+            std::vector<double> speeds;
+            ANN* controller = &population.at(p);
+            std::set<std::pair<int, int>> visited;
+            double new_fitness = 0;
+            int x, y;
+
+            for (int i = 0; i < num_steps; i++) {
+                for (int j = 0; j < rob.sensors.size(); j++) {
+                    sensorEnd = angleToVector(rob.heading + rob.sensors[j], range);
+                    sensorEnd = {
+                        rob.position[0] + sensorEnd[0],
+                        rob.position[1] + sensorEnd[1]
+                    };
+                    sensedValues[j] = 1 - (
+                        proximity(rob.position, sensorEnd, &map) / range
+                    );
+                }
+                speeds = controller->call(sensedValues);
+
+                rob.drive({speeds.at(0), speeds.at(1)}, 1);
+                rob.position = map.clip(rob.position);
+
+                x = static_cast<int>(std::ceil(rob.position.at(0)));
+                y = static_cast<int>(std::ceil(rob.position.at(1)));
+
+                // Penalize walking through walls.
+                for (unsigned int w = 0; w < walls.size(); w++) {
+                    if (walls.at(w).within(x, y)) {
+                        new_fitness -= 50;
+                        continue;
+                    }
+                }
+                std::pair<int, int> loc = std::make_pair(x, y);
+                visited.insert(loc);
+            }
+
+            new_fitness += visited.size();
+            summed_fitness += new_fitness;
+			fitness.push_back(std::make_pair(new_fitness, p));
+		}
+		std::sort(fitness.begin(), fitness.end());
+
+        best_fitness = fitness.back().first;
+        average_fitness = summed_fitness / population_size;
+        file << gen << "," << best_fitness << "," << average_fitness << "\n";
+        std::cout << "Generation: " << gen << " Best Fitness: " << best_fitness << " Average Fitness: " << average_fitness << std::endl;
+
+        std::vector<ANN> new_population;
+        
+        // Best from the previous run.
+		for (unsigned int i = 0; i < num_best; i++) {
+			ANN best = population.at(fitness.at((population_size - num_best) + i).second);
+			new_population.push_back(best);
+		}
+
+		// Crossovers.
+		for (int i = 0; i < num_cross; i++) {
+			ANN offspring = generator.crossover(new_population, num_parents, population_size);
+			new_population.push_back(offspring);
+		}
+
+		// Mutations.
+		int index = 0;
+		for (int i = 0; i < num_mut; i++) {
+			index = get_random_int(0, static_cast<int>(new_population.size() - 1));
+			ANN mutation = new_population.at(index);
+			mutation.mutate();
+			new_population.push_back(mutation);
+		}
+
+		// Completely new randoms.
+		generator.fill_random_population(new_population, num_new);
+
+
+        population.swap(new_population);
+        if (gen < generations-1) {
+            fitness.clear();
+        }   
+    }
+    file.close();
+
+    ANN* controller = &population.at(fitness.back().second);
+
+    try {
+        // Robot rob({-90, -90}, 0, 5.0, {22.5, 0, -22.5});
+        Robot rob(
+            {get_random_double(0, 100), get_random_double(-100, 100)},
+            get_random_double(0, 180), 5.0, {22.5, 0, -22.5});
+        std::vector<double> sensedValues = {-1, -1, -1}; // -1 = no object detected.
+        fixedVector sensorEnd = {-1, -1};
+        std::vector<double> speeds;
+        matplot::figure_handle f = matplot::figure(true);
+        matplot::axes_handle ax = f->current_axes();
+        ax->xlim(map.xlim);
+        ax->ylim(map.ylim);
+
+        rob.draw(ax);
+        map.draw(ax);
+        f->draw();
+
+        for (int i = 0; i < 1000; i++) {
+            for (int j = 0; j < rob.sensors.size(); j++) {
+                sensorEnd = angleToVector(rob.heading + rob.sensors[j], range);
+                sensorEnd = {
+                    rob.position[0] + sensorEnd[0],
+                    rob.position[1] + sensorEnd[1]
+                };
+                sensedValues[j] = 1 - (
+                    proximity(rob.position, sensorEnd, &map) / range
+                );
+            }
+            speeds = controller->call(sensedValues);
+
+            rob.drive({speeds.at(0), speeds.at(1)}, 1);
+            rob.position = map.clip(rob.position);
+            rob.draw(ax);
+        }
+        f->save("ann_trajectory.png");
+        f->show();
+    } catch (const std::runtime_error &e) {
+        // If you encounter the "popen() failed!" error, you likely have not
+        // installed gnuplot correctly.
+        std::cerr << "Runtime error: " << e.what() << std::endl;
+    }
+}
+
 int main(int argc, char* argv[]) {
     std::cout << "You are running version " << EvoRob_VERSION_MAJOR << "."
         << EvoRob_VERSION_MINOR << "." << std::endl;
     
     // Fallback values.
-    std::string selectedScenario = "hill";
+    std::string selectedScenario = "ann";
     std::string selectedController = "aggressor";
 
     if (argc > 1) {
@@ -437,6 +608,8 @@ int main(int argc, char* argv[]) {
         proximityScenario();
     } else if (selectedScenario == "hill") {
         hill_climber_scenario();
+    } else if (selectedScenario == "ann") {
+        ann_evolutionary_scenario();
     } else {
         std::cerr << "Invalid argument: " << selectedScenario << "."
             << std::endl;
